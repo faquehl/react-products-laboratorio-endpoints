@@ -7,6 +7,8 @@ import {
   searchProducts,
   getCategories,
   getProductsByCategory,
+  createProduct,
+  updateProduct,
   deleteProduct,
 } from "../services/ProductService";
 
@@ -18,10 +20,17 @@ function Products() {
   const [search, setSearch] = useState("");
   const [categories, setCategories] = useState([]);
   const [category, setCategory] = useState("");
+  const [editingId, setEditingId] = useState(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
   const limit = 12;
+
+  const [form, setForm] = useState({
+  title: "",
+  price: "",
+  description: "",
+});
 
   useEffect(() => {
     loadProducts();
@@ -141,9 +150,83 @@ function previousPage() {
     }
   }
 
-  function handleEdit(product) {
-    console.log("Editar:", product);
+  function handleChange(event) {
+  const { name, value } = event.target;
+
+  setForm({
+    ...form,
+    [name]: value,
+  });
+}
+
+
+async function handleCreate(event) {
+  event.preventDefault();
+
+  try {
+    const newProduct = await createProduct({
+      ...form,
+      price: Number(form.price),
+    });
+
+    setProducts([
+      newProduct,
+      ...products,
+    ]);
+
+    setForm({
+      title: "",
+      price: "",
+      description: "",
+    });
+
+  } catch (error) {
+    setError(error.message);
   }
+}
+
+ function handleEdit(product) {
+  setEditingId(product.id);
+
+  setForm({
+    title: product.title,
+    price: product.price,
+    description: product.description,
+  });
+}
+
+async function handleUpdate(event) {
+  event.preventDefault();
+
+  try {
+    const updated = await updateProduct(
+      editingId,
+      {
+        ...form,
+        price: Number(form.price),
+      }
+    );
+
+    setProducts(
+      products.map((product) =>
+        product.id === editingId
+          ? { ...product, ...updated }
+          : product
+      )
+    );
+
+    setEditingId(null);
+
+    setForm({
+      title: "",
+      price: "",
+      description: "",
+    });
+
+  } catch (error) {
+    setError(error.message);
+  }
+}
 
   if (loading) {
     return <p>Cargando productos...</p>;
@@ -192,6 +275,42 @@ function previousPage() {
           );
         })}
       </select>
+
+            <form
+  onSubmit={editingId ? handleUpdate : handleCreate}
+  className="product-form"
+>
+
+        <input
+          type="text"
+          name="title"
+          placeholder="Nombre"
+          value={form.title}
+          onChange={handleChange}
+          required
+        />
+
+        <input
+          type="number"
+          name="price"
+          placeholder="Precio"
+          value={form.price}
+          onChange={handleChange}
+          required
+        />
+
+        <textarea
+          name="description"
+          placeholder="Descripción"
+          value={form.description}
+          onChange={handleChange}
+        />
+
+        <button type="submit">
+  {editingId ? "Actualizar" : "Guardar"}
+</button>
+
+      </form>
 
       <ProductList
         products={products}
